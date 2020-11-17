@@ -1,0 +1,4 @@
+train_tib %>% 
+  map(~ str_c(unique(.x), collapse = ",")) %>% 
+  bind_rows() %>% 
+  gather(key = col_name, value = col_unique)

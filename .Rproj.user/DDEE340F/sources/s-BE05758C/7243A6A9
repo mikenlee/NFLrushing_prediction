@@ -1,0 +1,24 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1605236417824.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "647414659",
+    "id" : "7243A6A9",
+    "lastKnownWriteTime" : 1605621665,
+    "last_content_update" : 1605621665643,
+    "path" : "~/Documents/Personal/analytics/DDSD/nflrushing_predict.Rmd",
+    "project_path" : "nflrushing_predict.Rmd",
+    "properties" : {
+        "chunk_output_type" : "console",
+        "cursorPosition" : "225,30",
+        "scrollLine" : "208",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

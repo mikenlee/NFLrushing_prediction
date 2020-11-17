@@ -1,0 +1,233 @@
+---
+title: "AFC DDSD NFL Project - R Notebook"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+#Set up workspace
+```{r, message = FALSE}
+#import libraries
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+#view files in project
+list.files(path = "summer-fy21/NFL Data/")
+```
+
+```{r, message = FALSE}
+#read in training data set
+train_tib <- read_csv("summer-fy21/NFL Data/train1.zip") %>% 
+  bind_rows(read_csv("summer-fy21/NFL Data/train2.zip"))
+
+#read in test data set
+test_tib <- read_csv("summer-fy21/NFL Data/test_set.zip")
+
+#read in prediction data set
+predict_tib <- read_csv("summer-fy21/NFL Data/predictions.csv")
+```
+
+#Explore Data
+
+##Explore training data set
+```{r}
+# View structure of the data set
+train_tib %>% 
+  glimpse()
+
+# View unique values of each field
+train_tib %>% 
+  map(~ str_c(c(length(str_replace_na(unique(.x))), 
+                '---', 
+                  str_replace_na(unique(.x))), 
+              collapse = ",")) %>% 
+  bind_rows() %>%
+  gather(key = col_name, value = col_unique) %>% 
+  print(n=Inf)
+
+#explore one play
+train_tib %>% 
+  filter(PlayId == "20170907000118") %>% 
+  select(-c(JerseyNumber, PlayerCollegeName)) %>% 
+  select(GameId, NflId, NflIdRusher, YardLine, Quarter, GameClock, Position, FieldPosition, PossessionTeam, Yards) %>%
+  print(n=Inf)
+
+```
+
+#Plot and explore data
+
+```{r}
+#find how many plays per game
+train_tib %>% 
+  mutate(PlayId = format(PlayId, scientific=F),
+         GameId = format(GameId, scientific=F)) %>% 
+  group_by(GameId) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = GameId, y = n)) +
+  geom_point()
+#there are potential outliers (games with less than 20 rushing plays) that might skew
+```
+
+```{r}
+#plot number of turf types
+train_tib %>% 
+  group_by(Turf) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = Turf, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+#need to group: artificial or natural
+```
+
+```{r}
+#plot number of stadium types
+train_tib %>% 
+  group_by(StadiumType) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = StadiumType, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+#need to group and fix typos
+```
+
+```{r}
+#plot counts of game weather
+train_tib %>% 
+  group_by(GameWeather) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = GameWeather, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+#need to group and fix typos  
+```
+
+```{r}
+#plot counts of defensive formations
+train_tib %>% 
+  group_by(DefensePersonnel) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = DefensePersonnel, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+#0 or 1 DL formations doesn't make sense. explore this further  
+```
+
+```{r}
+#plot counts of Offensive formations
+train_tib %>% 
+  group_by(OffenseFormation) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = OffenseFormation, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+# examine NA, wildcat or empty  
+```
+
+```{r}
+#plot counts of Offensive positions
+train_tib %>% 
+  group_by(OffensePersonnel) %>% 
+  summarize(n = n_distinct(PlayId)) %>% 
+  ggplot(aes(x = OffensePersonnel, y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip()
+
+# some missing OL and QBs, and some have 2 QBs
+```
+
+#Data Cleaning
+
+```{r}
+#find unmatched values in home teams and visitor teams
+setdiff(train_tib$HomeTeamAbbr, train_tib$VisitorTeamAbbr)
+
+#find unmatched values in Field position teams and visitor teams
+setdiff(train_tib$FieldPosition, train_tib$VisitorTeamAbbr)
+setdiff(train_tib$VisitorTeamAbbr, train_tib$FieldPosition)
+
+#find unmatched values in Possession teams and visitor teams
+setdiff(train_tib$PossessionTeam, train_tib$VisitorTeamAbbr)
+setdiff(train_tib$VisitorTeamAbbr, train_tib$PossessionTeam)
+```
+
+```{r}
+#replace turf terms
+#from https://www.kaggle.com/c/nfl-big-data-bowl-2020/discussion/112681#latest-649087
+turf_replace <-  c('Field Turf'='Artificial', 'A-Turf Titan'='Artificial', 'Grass'='Natural', 
+         'UBU Sports Speed S5-M'='Artificial', 'Artificial'='Artificial', 'DD GrassMaster'='Artificial', 
+         'Natural Grass'='Natural', 'UBU Speed Series-S5-M'='Artificial', 'FieldTurf'='Artificial', 
+         'FieldTurf 360'='Artificial', 'Natural grass'='Natural', 'grass'='Natural', 
+        'Natural'='Natural', 'Artifical'='Artificial', 'FieldTurf360'='Artificial', 'Naturall Grass'='Natural', 
+        'Field turf'='Artificial', 'SISGrass'='Artificial', 'Twenty-Four/Seven Turf'='Artificial', 
+        'natural grass'='Natural', 'DD NaturalMaster'='Artificial', 'Natural Natural' = 'Natural', 
+        'Artificial 360'='Artificial', 'Artificial360'='Artificial', 'UBU-Speed Series-S5-M'='Artificial',
+        'Twenty Four/Seven Turf'='Artificial', 'SISNatural'='Natural', 'Turf'='Artificial')
+
+```
+
+
+```{r}
+train <- 
+train_tib %>% 
+  #replace unmatched team names
+  mutate(PossessionTeam = str_replace_all(PossessionTeam, c("BLT" = "BAL", 
+                                                            "CLV" = "CLE",
+                                                            "ARZ" = "ARI", 
+                                                            "HST" = "HOU"))) %>% 
+  mutate(FieldPosition = str_replace_all(FieldPosition, c("BLT" = "BAL", 
+                                                            "CLV" = "CLE",
+                                                            "ARZ" = "ARI", 
+                                                            "HST" = "HOU"))) %>% 
+  
+  #replace turf names with either natural or artificial 
+  mutate(Turf = str_replace_all(Turf, turf_replace)) %>% 
+  
+  #remove scientific notation
+  mutate(PlayId = format(PlayId, scientific=F),
+         GameId = format(GameId, scientific=F),
+         NflId = format(NflId, scientific=F)) %>% 
+  
+  #Change player birthday to age at the time of the game. 
+  mutate(GameDate = str_c(year(TimeSnap), month(TimeSnap), day(TimeSnap), sep = '-'),
+         GameDate = ymd(GameDate),
+         PlayerBirthDate = mdy(PlayerBirthDate),
+         PlayerAge = year(as.period(interval(start = PlayerBirthDate, end = GameDate)))) %>% 
+  
+  #Change player height to inches
+  separate(PlayerHeight, c("heightft", "heightin")) %>% 
+  mutate(height = as.numeric(heightft) * 12 + as.numeric(heightin)) %>% 
+  
+  #Change yardline to negative if team is in the opponent's side of the field
+  mutate(YardLine = ifelse(PossessionTeam == FieldPosition, YardLine, -YardLine)) 
+  
+```
+
+
+- Time diff between snap and handoff
+- Determine Defensive Linemen and Linebackers who prevent the most rushing yards. 
+create field to ID if they're on the field or not.
+
+
+```{r}
+#build the model
+
+####need to select more variables as they are cleaned
+trainmod <- train %>% 
+  select(PlayerAge, height, Turf)
+
+mod <- lm(Yards ~ ., trainmod)
+```
+
+
+
+
+ 
+

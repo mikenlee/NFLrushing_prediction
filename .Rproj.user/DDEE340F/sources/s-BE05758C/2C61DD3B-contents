@@ -1,0 +1,8 @@
+## Big Data Bowl 2020
+
+This problem is taken from the Kaggle Big Data Bowl 2020 competition; so additional details can be found [here](https://www.kaggle.com/c/nfl-big-data-bowl-2020/overview).  The BLUF is that you will use the *train.csv* dataset to predict the response variable, *Yards*.  Your goal is to produce a model that will predict using the *testX.csv* datasets for the lowest RMSE.  Create a file *prediction.csv* (you can use the file provided) and upload to your repository and we will evaluate your RMSE (this is different from the evaluation metric used in the BDB if you are looking through the competition site).  **This is not a *competition* for lowest RMSE**.  We want to see the process you use to get to a prediction and have a metric to assess knowledge.
+
+Due to file constriants, the training data is split into 4 separate .csvs in two zip files.  These should be combined to make the full training dataset.
+
+While the prediction is the main objective, any work you do with EDA and data visualization would be beneficial to include.  A lot of the problems that we encounter do not always require predictive modeling, but rather a clear and effective presentation of summarizations or visualizations.
+

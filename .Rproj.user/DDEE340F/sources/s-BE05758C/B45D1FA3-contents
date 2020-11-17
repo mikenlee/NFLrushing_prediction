@@ -1,0 +1,10 @@
+list_b = list(c('o', 'c', 'bk', 'bl', 't', 'g', 'd'))
+list_a = list(c('r', 's', 'h', 't', 'bl', 'o', 'c', 'ti', 'ca', 'bu'),
+              c('r', 's', 'h', 't', 'bl', 'o', 'c', 'ti', 'ca', 'bu'))
+lapply(list_a, function(a) {
+  b = list_b[[1]]
+  non.matching = setdiff(b, a)
+  return(c(length(non.matching), non.matching))
+})
+
+list_b
